@@ -152,7 +152,7 @@ export const staff = {
 };
 
 export const onboarding = {
-  lookup: (aisheCode) => http.get('/onboarding/lookup', { aishe_code: aisheCode }), // LOOKUP_INSTITUTION_BY_AISHE
+  lookup: (aisheCode, institutionType) => http.get('/onboarding/lookup', { aishe_code: aisheCode, institution_type: institutionType }), // LOOKUP_INSTITUTION_BY_AISHE
   invitation: (token) => http.get(`/onboarding/invitations/${token}`), // GET_INVITATION
   acceptInvitation: (token, body) => http.post(`/onboarding/invitations/${token}/accept`, body), // ACCEPT_INVITATION
   submitRegistration: (body) => http.post('/onboarding/registrations', body), // SUBMIT_INSTITUTION_REGISTRATION

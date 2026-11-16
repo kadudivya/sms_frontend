@@ -28,7 +28,7 @@ export const NAV = {
   ],
   platform: [
     { to: '/platform', label: 'Dashboard', end: true },
-    { to: '/platform/registrations', label: 'Registrations' },
+    { to: '/platform/registrations', label: 'Approvals' },
     { to: '/platform/institutions', label: 'Institutions' },
   ],
 };

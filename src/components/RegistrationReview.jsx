@@ -16,7 +16,7 @@ function Detail({ id, onDecided }) {
     else await onboarding.reject(id, note);
     setResult(approve ? 'approved' : 'rejected');
     const name = state.data?.requester?.full_name || 'The requester';
-    onDecided(approve ? `${name} approved and emailed a sign-in link.` : `${name}'s request rejected; they have been emailed your reason.`);
+    onDecided(approve ? `${name} approved and granted admin access.` : `${name}'s request rejected; they have been emailed your reason.`);
   }).catch(() => {});
 
   return (
@@ -32,7 +32,9 @@ function Detail({ id, onDecided }) {
                 <p className="mt-1 text-sm muted">Submitted {fmtDateTime(reg.created_at)} · {humanize(reg.path)}</p>
               </div>
               <div className="flex gap-2">
+                {reg.path === 'INVITE_LINK' && <Badge tone="blue">Invite link</Badge>}
                 {reg.is_second_claim && <Badge tone="amber">Second-admin claim</Badge>}
+                {!reg.is_second_claim && reg.path === 'REQUEST' && <Badge tone="blue">New claim</Badge>}
                 {reg.is_manual_institution && <Badge tone="amber">Not in AISHE data</Badge>}
                 <Badge tone={reg.approval_status === 'APPROVED' ? 'green' : reg.approval_status === 'REJECTED' ? 'red' : 'blue'}>{humanize(reg.approval_status)}</Badge>
               </div>
@@ -45,12 +47,14 @@ function Detail({ id, onDecided }) {
                 <KV k="Location" v={inst ? `${inst.district_name || ''}, ${inst.state_name || ''}` : '—'} />
                 {inst?.parent_name && <KV k="Affiliated to" v={inst.parent_name} />}
                 <KV k="Existing admin" v={inst?.has_active_admin ? 'Yes' : 'None'} />
+                <KV k="Institution status" v={humanize(inst?.onboarding_status || 'MASTER')} />
               </div>
               <div>
                 <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide muted">Requester</h3>
                 <KV k="Name" v={reg.requester.full_name} />
                 <KV k="Designation" v={reg.designation} />
                 <KV k="Email" v={reg.requester.email} />
+                {reg.requester.mobile && <KV k="Mobile" v={reg.requester.mobile} />}
                 <KV k="Email verified" v={reg.requester.email_verified ? 'Yes' : <span className="text-amber-800">Not yet</span>} />
                 <KV k="Authorisation letter" v={reg.authorization_letter ? <a href={reg.authorization_letter.download_url} target="_blank" rel="noreferrer">{reg.authorization_letter.filename}</a> : 'None'} />
               </div>
@@ -66,7 +70,13 @@ function Detail({ id, onDecided }) {
                 </div>
               </>
             )}
-            {result === 'approved' && <Notice tone="green"><strong>Approved.</strong> {reg.requester.full_name} has been emailed a sign-in link.</Notice>}
+            {reg.approval_status === 'APPROVED' && !result && (
+              <Notice tone="green"><strong>Approved.</strong> {reg.review_note ? `Remarks: ${reg.review_note}` : `${reg.requester.full_name} is approved as admin.`}</Notice>
+            )}
+            {reg.approval_status === 'REJECTED' && !result && (
+              <Notice tone="red"><strong>Rejected.</strong> {reg.review_note ? `Reason: ${reg.review_note}` : 'This request was rejected.'}</Notice>
+            )}
+            {result === 'approved' && <Notice tone="green"><strong>Approved.</strong> {reg.requester.full_name} has been approved as admin.</Notice>}
             {result === 'rejected' && <Notice tone="red"><strong>Rejected.</strong> The requester has been emailed your reason.</Notice>}
           </section>
         );
@@ -93,16 +103,29 @@ export default function RegistrationReview({ institutionKind }) {
         ))}
       </div>
       {flash && <Notice tone="green">{flash}</Notice>}
-      <Async state={queue} empty={<Card><Empty title="No registrations here" /></Card>}>
+      <Async state={queue} empty={<Card><Empty title="No requests here" /></Card>}>
         {(rows) => (
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-            <nav aria-label="Registrations" className="flex flex-col gap-2">
+            <nav aria-label="Approvals queue" className="flex flex-col gap-2">
               {rows.map((r) => (
                 <button key={r.id} type="button" onClick={() => setSelected(r.id)}
                   className={`flex flex-col gap-1 rounded-[10px] border p-3.5 text-left text-sm ${current === r.id ? 'border-brand bg-brand-soft' : 'border-gray-200 bg-white hover:border-blue-300'}`}>
                   <strong>{r.institution_name || r.aishe_code}</strong>
                   <span className="muted">{r.requester_name} · {r.designation}</span>
-                  <span>{r.is_second_claim ? <Badge tone="amber">Second-admin claim</Badge> : <Badge tone="blue">New claim</Badge>}</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {r.path === 'INVITE_LINK' ? (
+                      <Badge tone="blue">Invite link</Badge>
+                    ) : r.is_second_claim ? (
+                      <Badge tone="amber">Second-admin claim</Badge>
+                    ) : (
+                      <Badge tone="blue">New claim</Badge>
+                    )}
+                    {status !== 'PENDING' && (
+                      <Badge tone={r.approval_status === 'APPROVED' ? 'green' : 'red'}>
+                        {humanize(r.approval_status)}
+                      </Badge>
+                    )}
+                  </div>
                 </button>
               ))}
             </nav>
