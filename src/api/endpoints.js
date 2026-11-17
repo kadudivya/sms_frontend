@@ -23,6 +23,10 @@ export const master = {
   institutions: (params) => http.get('/institutions', params), // LIST_INSTITUTIONS
   // kind is 'university' or 'college' (the table the id belongs to; see urlKind() in AuthContext)
   institution: (kind, id) => http.get(`/institutions/${kind}/${id}`), // GET_INSTITUTION
+  suspendInstitution: (kind, id, reason) =>
+   http.post(`/institutions/${kind}/${id}/suspend`, { reason }),
+  reactivateInstitution: (kind, id) =>
+   http.post(`/institutions/${kind}/${id}/reactivate`),
 };
 
 export const students = {
@@ -152,7 +156,7 @@ export const staff = {
 };
 
 export const onboarding = {
-  lookup: (aisheCode, institutionType) => http.get('/onboarding/lookup', { aishe_code: aisheCode, institution_type: institutionType }), // LOOKUP_INSTITUTION_BY_AISHE
+  lookup: (aisheCode) => http.get('/onboarding/lookup', { aishe_code: aisheCode }), // LOOKUP_INSTITUTION_BY_AISHE
   invitation: (token) => http.get(`/onboarding/invitations/${token}`), // GET_INVITATION
   acceptInvitation: (token, body) => http.post(`/onboarding/invitations/${token}/accept`, body), // ACCEPT_INVITATION
   submitRegistration: (body) => http.post('/onboarding/registrations', body), // SUBMIT_INSTITUTION_REGISTRATION
