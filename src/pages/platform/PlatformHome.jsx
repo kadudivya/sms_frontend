@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect , useState } from 'react';
 import { Link } from 'react-router-dom';
-import { dashboards, onboarding } from '../../api/endpoints';
+import { dashboards, master, onboarding } from '../../api/endpoints';
 import StatusCounts from '../../components/StatusCounts';
 import { Async, Card, ErrorNote, Field, Modal, Notice, PageHeader, Table, TaskTile } from '../../components/ui';
 import { fmtNum } from '../../lib/format';
@@ -38,6 +38,106 @@ export function UniversityInviteModal({ mode, onClose }) {
           <div className="flex justify-end gap-2">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
             <button className="btn" disabled={busy}>{busy ? 'Sending…' : mode === 'link' ? 'Send link' : 'Create and invite'}</button>
+          </div>
+        </form>
+      )}
+    </Modal>
+  );
+}
+
+const list = (r) => (Array.isArray(r) ? r : r?.data ?? []);
+const AISHE_RE = /^U-\d{1,6}$/i;
+const URL_RE = /^https?:\/\/[^\s/$.?#]+\.[^\s]+$/i;
+const EMPTY = { aishe_code: '', name: '', state_id: '', district_id: '', website: '', year: '', location_type: '', address_line: '' };
+
+export function CreateUniversityModal({ onClose, onCreated }) {
+  const [f, setF] = useState(EMPTY);
+  const [states, setStates] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [problem, setProblem] = useState('');
+  const [done, setDone] = useState(false);
+  const { run, busy, error } = useAction();
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+
+  useEffect(() => { master.states().then((r) => setStates(list(r))).catch(() => {}); }, []);
+
+  const pickState = (e) => {
+    const id = e.target.value;
+    setF({ ...f, state_id: id, district_id: '' });
+    setDistricts([]);
+    if (id) master.districts(id).then((r) => setDistricts(list(r))).catch(() => {});
+  };
+
+  const check = () => {
+    if (!AISHE_RE.test(f.aishe_code.trim())) return 'AISHE code must look like U-1234';
+    if (f.name.trim().length < 3) return 'Enter the university name';
+    if (!f.state_id) return 'Select a state';
+    if (!f.district_id) return 'Select a district';
+    if (!URL_RE.test(f.website.trim())) return 'Enter a valid website, e.g. https://www.example.ac.in';
+    if (f.year && !/^\d{4}$/.test(f.year)) return 'Year of establishment must be 4 digits';
+    if (!f.location_type) return 'Select the location (Urban or Rural)';
+    return '';
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    const msg = check();
+    setProblem(msg);
+    if (msg) return;
+    run(async () => {
+      await onboarding.createUniversityMaster({
+        aishe_code: f.aishe_code.trim().toUpperCase(),
+        name: f.name.trim(),
+        state_id: Number(f.state_id),
+        district_id: Number(f.district_id),
+        website: f.website.trim(),
+        year_of_establishment: f.year ? Number(f.year) : null,
+        location_type: f.location_type,
+        address_line: f.address_line.trim() || null,
+      });
+      setDone(true);
+      onCreated?.();
+    }).catch(() => {});
+  };
+
+  return (
+    <Modal title="Create university" onClose={onClose}>
+      {done ? (
+        <div className="flex flex-col gap-4">
+          <Notice tone="green">{f.name} has been created with status Pending.</Notice>
+          <button type="button" className="btn self-end" onClick={onClose}>Done</button>
+        </div>
+      ) : (
+        <form className="flex flex-col gap-4" onSubmit={submit}>
+          <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto pr-1">
+            <Field label="AISHE code"><input className="input uppercase" value={f.aishe_code} onChange={set('aishe_code')} placeholder="U-1234" required /></Field>
+            <Field label="University name"><input className="input" value={f.name} onChange={set('name')} required /></Field>
+            <Field label="State">
+              <select className="input" value={f.state_id} onChange={pickState} required>
+                <option value="">Select state</option>
+                {states.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </Field>
+            <Field label="District">
+              <select className="input" value={f.district_id} onChange={set('district_id')} disabled={!f.state_id} required>
+                <option value="">Select district</option>
+                {districts.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Website"><input className="input" type="url" value={f.website} onChange={set('website')} placeholder="https://www.example.ac.in" required /></Field>
+            <Field label="Year of establishment (optional)"><input className="input" inputMode="numeric" maxLength={4} value={f.year} onChange={set('year')} placeholder="1990" /></Field>
+            <Field label="Location">
+              <select className="input" value={f.location_type} onChange={set('location_type')} required>
+                <option value="">Select</option><option value="Urban">Urban</option><option value="Rural">Rural</option>
+              </select>
+            </Field>
+            <Field label="Address line"><input className="input" value={f.address_line} onChange={set('address_line')} /></Field>
+            {problem && <p className="text-sm text-red-800">{problem}</p>}
+            <ErrorNote error={error} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn" disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
           </div>
         </form>
       )}
@@ -116,7 +216,8 @@ export default function PlatformHome() {
           );
         }}
       </Async>
-      {modal && <UniversityInviteModal mode={modal} onClose={() => setModal(null)} />}
+      {modal === 'link' && <UniversityInviteModal mode="link" onClose={() => setModal(null)} />}
+      {modal === 'create' && <CreateUniversityModal onClose={() => setModal(null)} />}
     </>
   );
 }

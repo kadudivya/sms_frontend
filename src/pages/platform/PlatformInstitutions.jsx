@@ -3,7 +3,7 @@ import { master } from '../../api/endpoints';
 import { Async, Badge, Card, Empty, PageHeader, Pager, Table } from '../../components/ui';
 import { humanize } from '../../lib/labels';
 import { useApi } from '../../lib/useApi';
-import { UniversityInviteModal } from './PlatformHome';
+import {CreateUniversityModal, UniversityInviteModal } from './PlatformHome';
 
 const TONE = { ACTIVE: 'green', PENDING: 'amber', MASTER: 'gray', SUSPENDED: 'red', REJECTED: 'red' };
 
@@ -62,7 +62,13 @@ export default function PlatformInstitutions() {
           )}
         </Async>
       </Card>
-      {modal && <UniversityInviteModal mode={modal} onClose={() => setModal(null)} />}
+      {modal === 'link' && <UniversityInviteModal mode="link" onClose={() => setModal(null)} />}
+      {modal === 'create' && (
+  <CreateUniversityModal
+    onClose={() => setModal(null)}
+    onCreated={() => setQuery((q) => ({ ...q, page: 1, _t: Date.now() }))}
+  />
+)}   
     </>
   );
 }

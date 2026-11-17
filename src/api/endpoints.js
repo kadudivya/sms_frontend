@@ -161,6 +161,7 @@ export const onboarding = {
   approve: (id, note) => http.post(`/onboarding/registrations/${id}/approve`, { note }), // APPROVE_REGISTRATION
   reject: (id, reason) => http.post(`/onboarding/registrations/${id}/reject`, { reason }), // REJECT_REGISTRATION
   createUniversity: (body) => http.post('/onboarding/universities', body), // CREATE_UNIVERSITY
+  createUniversityMaster: (body) => http.post('/onboarding/universities/master', body), // CREATE_UNIVERSITY_MASTER
   sendUniversitySignupLink: (body) => http.post('/onboarding/universities/signup-links', body), // SEND_UNIVERSITY_SIGNUP_LINK
   createCollege: (uniId, body) => http.post(`/onboarding/universities/${uniId}/colleges`, body), // CREATE_COLLEGE
   sendCollegeSignupLink: (uniId, body) =>
